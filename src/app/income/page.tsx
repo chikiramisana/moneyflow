@@ -6,13 +6,17 @@ import { useFinancialData } from "@/lib/storage";
 import { getYearMonth, addMonths, formatYearMonthLabel } from "@/lib/format";
 import { getActualPayDate } from "@/lib/holidays";
 import type { MonthlyIncome } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { AmountInput } from "@/components/amount-input";
-import { CurrencyDisplay } from "@/components/currency-display";
+import { motion } from "framer-motion";
 import { ChevronLeft, ChevronRight, Wallet, CalendarDays, Gift, Home, MoreHorizontal } from "lucide-react";
+
+const anim = {
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as const },
+};
 
 export default function IncomePage() {
   const { data, updateData } = useFinancialData();
@@ -56,112 +60,76 @@ export default function IncomePage() {
   const formatDate = (d: Date) =>
     `${d.getMonth() + 1}/${d.getDate()} (${["일", "월", "화", "수", "목", "금", "토"][d.getDay()]})`;
 
+  const fmt = (n: number) => Math.abs(Math.round(n)).toLocaleString("ko-KR");
+
+  const fields = [
+    { key: "salary" as const, label: "월급", icon: Wallet, iconBg: "bg-[#d4f943]", iconColor: "text-[#1a1a1a]", sub: `매달 5일 입금 (실제: ${formatDate(salaryPayDate)})`, value: salary },
+    { key: "bonus" as const, label: "상여", icon: Gift, iconBg: "bg-[#1a1a1a] dark:bg-white/10", iconColor: "text-[#d4f943]", sub: `매달 말일 입금 (실제: ${formatDate(bonusPayDate)})`, value: bonus },
+    { key: "rentSubsidy" as const, label: "월세 지원금", icon: Home, iconBg: "bg-muted", iconColor: "text-foreground/70", sub: "불규칙 지급 (해당 월에만 입력)", value: rentSubsidy },
+    { key: "otherIncome" as const, label: "기타 수입", icon: MoreHorizontal, iconBg: "bg-muted", iconColor: "text-foreground/70", sub: "복지포인트, 떡값, 타결금 등", value: otherIncome },
+  ];
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">수입 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">매월 수입을 입력하고 관리하세요.</p>
-        </div>
-        <div className="flex items-center gap-2 bg-card border rounded-xl px-1 py-1">
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, -1))}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm font-semibold px-3 min-w-[100px] text-center">{formatYearMonthLabel(currentMonth)}</span>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+    <div className="max-w-2xl mx-auto space-y-5">
+      {/* Month nav */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-lg font-bold">수입 관리</h2>
+        <div className="flex items-center gap-2 rounded-[14px] border-2 border-foreground bg-card px-1 py-1">
+          <button onClick={() => setCurrentMonth(addMonths(currentMonth, -1))} className="h-7 w-7 flex items-center justify-center rounded-[10px] hover:bg-muted transition-colors">
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </button>
+          <span className="text-xs font-bold px-2 min-w-[100px] text-center">{formatYearMonthLabel(currentMonth)}</span>
+          <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} className="h-7 w-7 flex items-center justify-center rounded-[10px] hover:bg-muted transition-colors">
+            <ChevronRight className="h-3.5 w-3.5" />
+          </button>
         </div>
       </div>
 
-      <Card className="rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
-              <Wallet className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+      {fields.map((f, i) => (
+        <motion.div key={f.key} {...anim} transition={{ ...anim.transition, delay: i * 0.05 }}>
+          <div className="rounded-[20px] bg-card border-2 border-foreground p-5 space-y-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-10 w-10 rounded-[14px] ${f.iconBg} flex items-center justify-center`}>
+                <f.icon className={`h-5 w-5 ${f.iconColor}`} />
+              </div>
+              <div>
+                <p className="text-sm font-bold">{f.label}</p>
+                <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                  <CalendarDays className="h-3 w-3" />
+                  {f.sub}
+                </p>
+              </div>
             </div>
-            월급
-          </CardTitle>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />
-            매달 5일 입금 (실제 입금일: {formatDate(salaryPayDate)})
-          </p>
-        </CardHeader>
-        <CardContent>
-          <Label className="text-xs">월급 금액</Label>
-          <AmountInput value={salary} onChange={(v) => updateField("salary", v)} placeholder="월급을 입력하세요" />
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-              <Gift className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+            <div>
+              <Label className="text-xs text-muted-foreground">{f.label} 금액</Label>
+              <AmountInput value={f.value} onChange={(v) => updateField(f.key, v)} placeholder="0" />
             </div>
-            상여
-          </CardTitle>
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" />
-            매달 말일 입금 (실제 입금일: {formatDate(bonusPayDate)})
-          </p>
-        </CardHeader>
-        <CardContent>
-          <Label className="text-xs">상여 금액</Label>
-          <AmountInput value={bonus} onChange={(v) => updateField("bonus", v)} placeholder="상여를 입력하세요" />
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Home className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400" />
-            </div>
-            월세 지원금
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">불규칙 지급 (해당 월에만 입력)</p>
-        </CardHeader>
-        <CardContent>
-          <Label className="text-xs">지원금 금액</Label>
-          <AmountInput value={rentSubsidy} onChange={(v) => updateField("rentSubsidy", v)} placeholder="0" />
-        </CardContent>
-      </Card>
-
-      <Card className="rounded-2xl shadow-sm">
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <div className="h-7 w-7 rounded-lg bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-              <MoreHorizontal className="h-3.5 w-3.5 text-orange-600 dark:text-orange-400" />
-            </div>
-            기타 수입
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">복지포인트, 떡값, 타결금 등</p>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <Label className="text-xs">금액</Label>
-            <AmountInput value={otherIncome} onChange={(v) => updateField("otherIncome", v)} placeholder="0" />
           </div>
-          <div>
-            <Label className="text-xs">메모</Label>
-            <Input
-              value={otherIncomeMemo}
-              onChange={(e) => updateField("otherIncomeMemo", e.target.value)}
-              placeholder="수입 내역을 메모하세요"
-            />
-          </div>
-        </CardContent>
-      </Card>
+        </motion.div>
+      ))}
 
-      <Card className="rounded-2xl shadow-sm bg-primary text-primary-foreground">
-        <CardContent className="pt-6">
+      {/* 기타 수입 메모 */}
+      <motion.div {...anim} transition={{ ...anim.transition, delay: 0.2 }}>
+        <div className="rounded-[20px] bg-card border-2 border-foreground p-5">
+          <Label className="text-xs text-muted-foreground">기타 수입 메모</Label>
+          <Input
+            value={otherIncomeMemo}
+            onChange={(e) => updateField("otherIncomeMemo", e.target.value)}
+            placeholder="수입 내역을 메모하세요"
+            className="mt-1 rounded-[10px]"
+          />
+        </div>
+      </motion.div>
+
+      {/* Total */}
+      <motion.div {...anim} transition={{ ...anim.transition, delay: 0.25 }}>
+        <div className="rounded-[20px] bg-[#d4f943] border-2 border-[#1a1a1a] p-5">
           <div className="flex items-center justify-between">
-            <span className="text-base font-semibold">이달 총 수입</span>
-            <span className="text-2xl font-bold tabular-nums">{total.toLocaleString("ko-KR")}원</span>
+            <span className="text-base font-bold text-[#1a1a1a]">이달 총 수입</span>
+            <span className="text-2xl font-extrabold text-[#1a1a1a] tabular-nums">{fmt(total)}<span className="text-sm font-bold ml-0.5">원</span></span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </motion.div>
     </div>
   );
 }
